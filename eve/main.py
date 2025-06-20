@@ -1,15 +1,19 @@
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from alice.main import main as alice_main
-from math import gcd
 
 
-def factorize(n):
-    for i in range(2, n):
+def factorize(n: int):
+    """Very naive factorization used for demonstration only."""
+    for i in range(2, int(n ** 0.5) + 1):
         if n % i == 0:
             return i, n // i
     return None, None
 
 
-def modinv(a, m):
+def modinv(a: int, m: int) -> int:
     m0, x0, x1 = m, 0, 1
     while a > 1:
         q = a // m
@@ -18,7 +22,7 @@ def modinv(a, m):
     return x1 + m0 if x1 < 0 else x1
 
 
-def decrypt_as_eve(e, n, ciphertext):
+def decrypt_as_eve(e: int, n: int, ciphertext: list[int]):
     p, q = factorize(n)
     if not p or not q:
         print("Eve failed to factor n.")
@@ -28,7 +32,7 @@ def decrypt_as_eve(e, n, ciphertext):
     phi = (p - 1) * (q - 1)
     d = modinv(e, phi)
     print(f"[Eve] Computed private key d={d}")
-    return ''.join([chr(pow(char, d, n)) for char in ciphertext])
+    return ''.join(chr(pow(c, d, n)) for c in ciphertext)
 
 
 def main():

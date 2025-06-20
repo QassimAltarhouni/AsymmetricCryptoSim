@@ -1,49 +1,89 @@
 import random
 from math import gcd
 
-def is_prime(n):
-    if n <= 1: return False
-    if n <= 3: return True
-    if n % 2 == 0 or n % 3 == 0: return False
-    i = 5
-    while i * i <= n:
-        if n % i == 0 or n % (i + 2) == 0: return False
-        i += 6
+# Miller-Rabin primality test for probabilistic prime checking
+# This allows generating primes with configurable bit lengths
+
+def _is_probable_prime(n: int, k: int = 40) -> bool:
+    """Return True if n is probably prime using Miller-Rabin."""
+    if n < 2:
+        return False
+    # handle small primes
+    for p in (2, 3, 5, 7, 11, 13, 17, 19, 23, 29):
+        if n % p == 0:
+            return n == p
+    # find r and s such that n-1 = 2^r * s with s odd
+    r, s = 0, n - 1
+    while s % 2 == 0:
+        r += 1
+        s //= 2
+    for _ in range(k):
+        a = random.randrange(2, n - 1)
+        x = pow(a, s, n)
+        if x in (1, n - 1):
+            continue
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
     return True
 
-def generate_large_prime(start=100, end=300):
+
+def _generate_prime_candidate(bits: int) -> int:
+    candidate = random.getrandbits(bits)
+    candidate |= 1 << (bits - 1)  # ensure high bit is set
+    candidate |= 1  # ensure odd
+    return candidate
+
+
+def generate_large_prime(bits: int) -> int:
+    """Generate a prime number of the given bit length."""
     while True:
-        p = random.randint(start, end)
-        if is_prime(p):
-            return p
+        candidate = _generate_prime_candidate(bits)
+        if _is_probable_prime(candidate):
+            return candidate
+
 
 class RSA:
-    def __init__(self):
-        self.p = generate_large_prime()
-        self.q = generate_large_prime()
+    """Basic RSA implementation with configurable key length."""
+
+    def __init__(self, key_length: int = 512):
+        half = key_length // 2
+        self.p = generate_large_prime(half)
+        self.q = generate_large_prime(half)
         while self.q == self.p:
-            self.q = generate_large_prime()
+            self.q = generate_large_prime(half)
         self.n = self.p * self.q
         self.phi = (self.p - 1) * (self.q - 1)
-        self.e = self.find_e()
-        self.d = self.modinv(self.e, self.phi)
+        self.e = self._find_e()
+        self.d = self._modinv(self.e, self.phi)
 
-    def find_e(self):
+    def _find_e(self) -> int:
+        # common choice for e is 65537
+        e = 65537
+        if gcd(e, self.phi) == 1:
+            return e
         e = 3
         while gcd(e, self.phi) != 1:
             e += 2
         return e
 
-    def modinv(self, a, m):
-        m0, x0, x1 = m, 0, 1
-        while a > 1:
-            q = a // m
-            a, m = m, a % m
-            x0, x1 = x1 - q * x0, x0
-        return x1 + m0 if x1 < 0 else x1
+    @staticmethod
+    def _egcd(a: int, b: int):
+        if a == 0:
+            return b, 0, 1
+        g, y, x = RSA._egcd(b % a, a)
+        return g, x - (b // a) * y, y
 
-    def encrypt(self, plaintext):
-        return [pow(ord(char), self.e, self.n) for char in plaintext]
+    def _modinv(self, a: int, m: int) -> int:
+        g, x, _ = self._egcd(a, m)
+        if g != 1:
+            raise ValueError("Inverse doesn't exist")
+        return x % m
 
-    def decrypt(self, ciphertext):
-        return ''.join([chr(pow(char, self.d, self.n)) for char in ciphertext])
+    def encrypt(self, plaintext: str) -> list[int]:
+        return [pow(ord(ch), self.e, self.n) for ch in plaintext]
+    def decrypt(self, ciphertext: list[int]) -> str:
+        return "".join(chr(pow(c, self.d, self.n)) for c in ciphertext)
