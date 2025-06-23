@@ -6,7 +6,7 @@ from sympy import factorint
 def is_perfect_square(n: int) -> bool:
     root = math.isqrt(n)
     return root * root == n
-
+#Express𝑛=𝑎2−𝑏2⇒(𝑎−𝑏)(𝑎+𝑏)n=a2−b2⇒(a−b)(a+b)
 def fermat_factor(n: int, max_iterations: int = 100000):
     a = math.isqrt(n)
     b2 = a * a - n
@@ -19,7 +19,7 @@ def fermat_factor(n: int, max_iterations: int = 100000):
             return None, None
     b = math.isqrt(b2)
     return a - b, a + b
-
+# Find a factor of n using random sequences.
 def _pollards_rho(n: int, max_iterations: int = 10000, max_attempts: int = 5):
     if n % 2 == 0:
         return 2
@@ -48,7 +48,7 @@ def factorize_pollard(n: int):
     if factor and 1 < factor < n:
         return factor, n // factor, time.time() - start
     return None, None, -1
-
+# Express𝑛=𝑎2−𝑏2⇒(𝑎−𝑏)(𝑎+𝑏)n=a2−b2⇒(a−b)(a+b)
 def factorize_fermat(n: int):
     start = time.time()
     p, q = fermat_factor(n)
