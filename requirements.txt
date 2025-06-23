@@ -1,3 +1,4 @@
 inquirer>=2.9.2
 matplotlib>=3.5.1
 numpy>=1.20.3
+pytest>=7.0

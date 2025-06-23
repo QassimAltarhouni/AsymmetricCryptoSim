@@ -1,0 +1,15 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Virtual environment directories
+venv/
+.env/
+
+# IDE directories
+.idea/
+
+# Misc
+*.egg-info/
+

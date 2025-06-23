@@ -1,12 +1,29 @@
 import random
 import math
 import time
+from sympy import factorint
 
-def _pollards_rho(n: int, max_iterations: int = 10_000) -> int | None:
+def is_perfect_square(n: int) -> bool:
+    root = math.isqrt(n)
+    return root * root == n
+
+def fermat_factor(n: int, max_iterations: int = 100000):
+    a = math.isqrt(n)
+    b2 = a * a - n
+    count = 0
+    while b2 < 0 or not is_perfect_square(b2):
+        a += 1
+        b2 = a * a - n
+        count += 1
+        if count > max_iterations:
+            return None, None
+    b = math.isqrt(b2)
+    return a - b, a + b
+
+def _pollards_rho(n: int, max_iterations: int = 10000, max_attempts: int = 5):
     if n % 2 == 0:
         return 2
-
-    while True:
+    for _ in range(max_attempts):
         x = random.randrange(2, n - 1)
         y = x
         c = random.randrange(1, n - 1)
@@ -21,16 +38,39 @@ def _pollards_rho(n: int, max_iterations: int = 10_000) -> int | None:
             if d == n:
                 break
             return d
+    return None
 
-
-def factorize(n: int):
+def factorize_pollard(n: int):
     start = time.time()
     if n % 2 == 0:
         return 2, n // 2, time.time() - start
-
     factor = _pollards_rho(n)
     if factor and 1 < factor < n:
         return factor, n // factor, time.time() - start
+    return None, None, -1
+
+def factorize_fermat(n: int):
+    start = time.time()
+    p, q = fermat_factor(n)
+    duration = time.time() - start
+    if p and q:
+        return p, q, duration
+    return None, None, -1
+
+def factorize_gnfs(n: int):
+    start = time.time()
+    factors = factorint(n)
+    if len(factors) == 2:
+        p, q = list(factors)
+        return p, q, time.time() - start
+    return None, None, -1
+
+def factorize_ecm(n: int):
+    start = time.time()
+    factors = factorint(n)  # Simulated ECM via sympy
+    if len(factors) == 2:
+        p, q = list(factors)
+        return p, q, time.time() - start
     return None, None, -1
 
 def modinv(a, m):
@@ -41,14 +81,22 @@ def modinv(a, m):
         x0, x1 = x1 - q * x0, x0
     return x1 + m0 if x1 < 0 else x1
 
-def eve_attack(e, n, ciphertext):
-    p, q, time_taken = factorize(n)
-    if not p:
-        print("[Eve] Failed to factor n.")
-        return None
+def eve_attack(e, n, ciphertext, method="rho"):
+    if method == "rho":
+        p, q, time_taken = factorize_pollard(n)
+    elif method == "fermat":
+        p, q, time_taken = factorize_fermat(n)
+    elif method == "gnfs":
+        p, q, time_taken = factorize_gnfs(n)
+    elif method == "ecm":
+        p, q, time_taken = factorize_ecm(n)
+    else:
+        raise ValueError("Unsupported method")
 
-    print(f"[Eve] Factored n in {time_taken:.4f} seconds: p={p}, q={q}")
+    if not p or not q:
+        return None, method, None, time_taken
+
     phi = (p - 1) * (q - 1)
     d = modinv(e, phi)
-    print(f"[Eve] Calculated private key: d={d}")
-    return ''.join([chr(pow(char, d, n)) for char in ciphertext])
+    decrypted = ''.join(chr(pow(c, d, n)) for c in ciphertext)
+    return decrypted, method, (p, q, d), time_taken
